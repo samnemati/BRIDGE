@@ -87,7 +87,7 @@ After preprocessing:
 
 Use:
 ```bash
-scripts/organize_cat12_output.sh
+organize_cat12_output.sh
 ```
 This organizes CAT12 output into two folders: rp1_CAT12.9/  and  rp2_CAT12.9/
 
@@ -100,7 +100,7 @@ BrainAGE requires:
 
 Use:
 ```bash
-scripts/cat12_BrAge_tables.py
+cat12_BrAge_tables.py
 ```
 These files must be sorted in the same order as rp1/rp2 filenames.
 
@@ -147,7 +147,7 @@ We used LASSO and stratified K-fold cross-validation to evaluate how well the be
 Each must contain Subject_ID for merging.
 
 ### **5.2 Run ML pipeline**
-    python scripts/BAG_pred_kfoldCV.py
+    python BAG_pred_kfoldCV.py
 
 ### **5.3 What the script does**
 
