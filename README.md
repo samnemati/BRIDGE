@@ -1,4 +1,4 @@
-# BRIDGE: Behavioral Risk Indicators Driving Gap Estimations  
+# BRIDGE: Behavioral Risk Indicators Driving Brain Age Gap Estimations  
 ### CAT12 → BrainAGE Pipeline & BAG Prediction from Behavioral Features
 
 This repository documents the complete workflow used to estimate **brain age** using the **CAT12 / BrainAGE framework** and to evaluate whether **behavioral measures** can predict Brain Age Gap (BAG).  
