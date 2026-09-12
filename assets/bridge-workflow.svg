@@ -14,7 +14,7 @@
     </marker>
   </defs>
   <rect width="1200" height="500" fill="#f7fafc"/>
-  <text x="600" y="52" class="title" text-anchor="middle">BRIDGE workflow: MRI-derived brain age and behavioral BAG prediction</text>
+  <text x="600" y="52" class="title" text-anchor="middle">MRI-derived brain age and BAG prediction based on behavioral factors</text>
 
   <rect x="45" y="125" width="180" height="112" class="box" fill="#e6fffa" stroke="#319795"/>
   <text x="135" y="168" class="label">T1-weighted MRI</text>
