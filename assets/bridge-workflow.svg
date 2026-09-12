@@ -1,0 +1,50 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="500" viewBox="0 0 1200 500" role="img" aria-labelledby="title desc">
+  <title id="title">BRIDGE analysis workflow</title>
+  <desc id="desc">T1 MRI scans are processed with CAT12, transformed into BrainAGE features, and used to calculate brain-age gap. Behavioral measures are combined with brain-age gap in a cross-validated LASSO analysis.</desc>
+  <style>
+    .title { font: 700 28px Arial, sans-serif; fill: #102a43; }
+    .label { font: 700 18px Arial, sans-serif; fill: #102a43; text-anchor: middle; }
+    .detail { font: 15px Arial, sans-serif; fill: #486581; text-anchor: middle; }
+    .arrow { stroke: #627d98; stroke-width: 4; fill: none; marker-end: url(#arrowhead); }
+    .box { stroke-width: 2; rx: 16; ry: 16; }
+  </style>
+  <defs>
+    <marker id="arrowhead" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto">
+      <path d="M0,0 L10,4 L0,8 Z" fill="#627d98"/>
+    </marker>
+  </defs>
+  <rect width="1200" height="500" fill="#f7fafc"/>
+  <text x="600" y="52" class="title" text-anchor="middle">BRIDGE workflow: MRI-derived brain age and behavioral BAG prediction</text>
+
+  <rect x="45" y="125" width="180" height="112" class="box" fill="#e6fffa" stroke="#319795"/>
+  <text x="135" y="168" class="label">T1-weighted MRI</text>
+  <text x="135" y="195" class="detail">one scan per subject</text>
+
+  <rect x="300" y="125" width="180" height="112" class="box" fill="#ebf8ff" stroke="#3182ce"/>
+  <text x="390" y="168" class="label">CAT12</text>
+  <text x="390" y="195" class="detail">GM and WM affine maps</text>
+
+  <rect x="555" y="125" width="180" height="112" class="box" fill="#f0fff4" stroke="#38a169"/>
+  <text x="645" y="168" class="label">BrainAGE</text>
+  <text x="645" y="195" class="detail">feature matrices + GPR</text>
+
+  <rect x="810" y="125" width="180" height="112" class="box" fill="#fffaf0" stroke="#dd6b20"/>
+  <text x="900" y="168" class="label">Brain-age gap</text>
+  <text x="900" y="195" class="detail">predicted age − age</text>
+
+  <path d="M225 181 H300" class="arrow"/>
+  <path d="M480 181 H555" class="arrow"/>
+  <path d="M735 181 H810" class="arrow"/>
+
+  <rect x="190" y="340" width="230" height="105" class="box" fill="#faf5ff" stroke="#805ad5"/>
+  <text x="305" y="380" class="label">Behavioral measures</text>
+  <text x="305" y="407" class="detail">numeric predictors</text>
+
+  <rect x="635" y="340" width="270" height="105" class="box" fill="#fff5f5" stroke="#e53e3e"/>
+  <text x="770" y="380" class="label">LASSO cross-validation</text>
+  <text x="770" y="407" class="detail">out-of-fold BAG prediction</text>
+
+  <path d="M900 237 V292 H770 V340" class="arrow"/>
+  <path d="M420 392 H635" class="arrow"/>
+  <text x="548" y="375" class="detail">predict</text>
+</svg>

@@ -1,174 +1,117 @@
-# BRIDGE: Behavioral Risk Indicators Driving Brain Age Gap Estimations  
-### CAT12 → BrainAGE Pipeline & BAG Prediction from Behavioral Features
+# BRIDGE
 
-This repository documents the complete workflow used to estimate **brain age** using the **CAT12 / BrainAGE framework** and to evaluate whether **behavioral measures** can predict Brain Age Gap (BAG).  
-It includes preprocessing steps, feature extraction, brain-age modeling, BAG computation, and machine-learning analyses.
+**Behavioral Risk Indicators Driving Brain Age Gap Estimation** is a set of example scripts for a CAT12/BrainAGE workflow and an exploratory analysis that predicts brain-age gap (BAG) from behavioral variables.
 
----
+The repository provides glue code around the external CAT12, SPM12, and BrainAGE toolboxes. It does **not** include those toolboxes, MRI data, trained reference models, or behavioral spreadsheets. The paths embedded in the scripts point to the original author's computer and must be changed before use.
 
-# 📦 Repository Overview
+![BRIDGE workflow](assets/bridge-workflow.svg)
 
-BRIDGE/
-│
-├── scripts/ # MATLAB & Python pipelines
-├── data/ # (empty in repo) Place your own MRI/feature files here
-├── docs/ # Documentation & notes
-├── results/ # Output tables, figures (not committed)
-└── README.md
+## What is included
 
-# 1️⃣ MRI Preprocessing (using CAT12)
+| File | Purpose |
+| --- | --- |
+| `run_cat12_batch.m` | Runs a saved CAT12 segmentation batch once per T1-weighted scan. |
+| `cat12_batch_template.mat` | CAT12 batch template used by `run_cat12_batch.m`. |
+| `organize_cat12_output.sh` | Collects CAT12 affine GM (`rp1`) and WM (`rp2`) images. Review and set its paths before running. |
+| `cat12_BrAge_tables.py` | Creates age, sex, and ordered-ID text tables aligned to sorted `rp1` filenames. |
+| `make_brainage_tables.py` | Duplicate of `cat12_BrAge_tables.py`, retained for compatibility. |
+| `run_BA_data2mat.m` | Calls BrainAGE's external `BA_data2mat` function to make feature matrices. |
+| `run_BA_gpr_ui.m` | Loads feature matrices, calls external `BA_gpr`, and writes predicted age and BAG. Its current configuration trains and tests on the same cohort. |
+| `BAG_pred_kfoldCV.py` | Runs LASSO models with age-stratified outer cross-validation to predict BAG columns from numeric behavioral variables. |
+| `*_sample.*`, `ABC_BrainAge_BAG.csv` | Small examples of age/sex/ID tables and the output schema; not a complete analysis dataset. |
 
- **SPM12 + CAT12** are used to preprocess T1-weighted MRI scans and this generates the tissue maps required for BrainAGE.
+## Requirements
 
-### **1.1 Required data structure**
-Each subject folder must contain their raw T1w file:
+- MATLAB with [SPM12](https://www.fil.ion.ucl.ac.uk/spm/software/spm12/) and [CAT12](https://github.com/ChristianGaser/CAT12).
+- A local checkout of [BrainAGE](https://github.com/ChristianGaser/BrainAGE), on the MATLAB path when running `run_BA_data2mat.m` and `run_BA_gpr_ui.m`.
+- Python 3 with `numpy`, `pandas`, `scikit-learn`, `matplotlib`, and an Excel reader such as `openpyxl` for the behavioral analysis.
+- One T1-weighted NIfTI image per subject and a metadata CSV containing `ID`, `Age`, and optionally `Male` (0/1) or `Sex` (`Male`/`Female`).
 
-{Subject_ID}/T1_{Subject_ID}.nii
-Example: ABC1001/T1_ABC1001.nii
+No dependency lock file or automated test suite is currently provided.
 
+## Workflow
 
-### **1.2 Generate a subject list file**
-From the directory containing all subject folders:
+### 1. Run CAT12 preprocessing
 
-```bash
-find "$PWD" -maxdepth 2 -type f -name "T1_*.nii" | sort > subj_list_paths.txt
-'
+Arrange one image per subject, for example:
+
+```text
+session1/
+  ABC1001/T1_ABC1001.nii
+  ABC1002/T1_ABC1002.nii
 ```
-Check:
+
+From the directory containing the subject folders, make a stable list of images:
+
 ```bash
+find "$PWD" -maxdepth 2 -type f -name 'T1_*.nii' | sort > subj_list_paths.txt
 head subj_list_paths.txt
 wc -l subj_list_paths.txt
 ```
 
-### **1.3 Configure CAT12 in MATLAB**
+Open `run_cat12_batch.m` and set `spm_path`, `template_batch`, `subj_list_file`, and `logfile`. In MATLAB, run it after confirming that the batch template exports affine DARTEL GM and WM maps. Downstream scripts expect `rp1*_affine.nii` and `rp2*_affine.nii` in each subject's `mri/` directory.
 
-addpath('/path/to/spm12');
-addpath('/path/to/spm12/toolbox/cat12');
+On macOS, CAT12 distributed from the internet may need its quarantine attribute removed before MATLAB can execute it:
 
-macOS users must do this to avoide security errors:
 ```bash
-sudo xattr -r -d com.apple.quarantine "/path/to/spm/toolbox/cat12"
+sudo xattr -r -d com.apple.quarantine /path/to/spm12/toolbox/cat12
 ```
-### **1.4 CAT12 batch template**
 
-You can use the cat12_batch_template.mat from this repository or use the CAT12 GUI to prepare a batch template:
+### 2. Assemble BrainAGE inputs and metadata tables
 
-Enable
+Set the source and output locations in `organize_cat12_output.sh`, then run it from a shell. It copies the affine GM and WM maps into `rp1_CAT12.9/` and `rp2_CAT12.9/` beneath its configured output directory. Confirm both folders have the expected, equal number of files.
 
-    Gray matter → DARTEL export → Affine
+Set `outbase` and `ages_csv` in `cat12_BrAge_tables.py`, then run:
 
-    White matter → DARTEL export → Affine
-
-Save as: cat12_batch_template.mat
-
-### **1.5 Run CAT12 preprocessing**
-
-    scripts/run_cat12_batch.m
-
-This script:
-
-    Loads the subject list
-    Applies the saved batch template
-    Logs processing into cat12_run_log.txt
-
-Inspect outputs for each subject:
 ```bash
-${ID}/mri/
-${ID}/report/
-${ID}/label/
+python3 cat12_BrAge_tables.py
 ```
-Confirm that rp1 (GM) and rp2 (WM) affine-registered maps are available for all subjects.
 
-# 2️⃣ Organize CAT12 Outputs & Prepare BrainAGE Input Tables
+The script sorts `rp1` filenames, derives subject IDs, and writes these files to `<outbase>/tables/`:
 
-After preprocessing:
+- `ages.txt` — chronological ages, one per line.
+- `male.txt` — male indicator, one per line; if sex is absent, the script currently writes zeros.
+- `ordered_ids.txt` — the subject order used by the two tables.
 
-### **2.1 Gather rp1/rp2 files**
+Before continuing, verify that every subject was matched to metadata. A missing ID is written as `NaN` in `ages.txt` and should be corrected rather than passed downstream. The order of `rp1`, `rp2`, ages, sex, and IDs must remain identical.
 
-Use:
+### 3. Create feature matrices and estimate age
+
+Edit the base directory and settings in `run_BA_data2mat.m`; run it from a MATLAB session where `BA_data2mat` is on the path. The checked-in settings use both tissue classes and generate 4 mm/8 mm resampled, 4 mm/8 mm smoothed feature matrices.
+
+Then edit `run_BA_gpr_ui.m` so its directory, basename, release string, segments, resolution, smoothing, and tables directory match the files just generated. It writes a CSV with these columns:
+
+```text
+ID, Age, PredictedAge, BAG
+```
+
+Here, `BAG = PredictedAge - Age`; a positive value means an older predicted brain age than chronological age, and a negative value means a younger predicted brain age.
+
+Important: the provided `run_BA_gpr_ui.m` is configured to use the same cohort as both training and test data. Its estimates are therefore in-sample and should not be presented as externally validated brain-age predictions. Use a separate, appropriate reference-training cohort and validate the BrainAGE configuration for generalizable inference.
+
+### 4. Predict BAG from behavioral measures
+
+Edit `BEHAVIOR_PATH`, `BRAINAGE_PATH`, and `FIG_DIR` near the top of `BAG_pred_kfoldCV.py`. Both inputs must be Excel workbooks and share a `Subject_ID` column. The brain-age workbook must also contain `Age` and at least one target column ending in `_BAG` (for example, `Global_BAG`). Numeric columns remaining after identifiers, age, brain-age fields, and BAG fields are used as behavioral predictors.
+
+Run:
+
 ```bash
-organize_cat12_output.sh
+python3 BAG_pred_kfoldCV.py
 ```
-This organizes CAT12 output into two folders: rp1_CAT12.9/  and  rp2_CAT12.9/
 
-### **2.2 Create required tables for BrainAGE**
+For each `_BAG` target, the script performs a shuffled five-fold outer `StratifiedKFold`, stratifying participants into age quantile bins. Median imputation and `LassoCV` are fit within each training fold. It saves out-of-fold predictions, predicted-versus-observed plots, mean absolute LASSO coefficients, and a summary with cross-validated R², MAE, and Pearson correlation. The target must have enough observations in every age stratum for five folds.
 
-BrainAGE requires:
+`ABC_BrainAge_BAG.csv` illustrates the final age-prediction output, but uses `ID`, not `Subject_ID`, and has a `BAG` column rather than the `_BAG` suffix required by this Python script. Rename/transform columns or update the script before using that sample as an input.
 
-    ages.txt (age per subject, one value per line)
-    male.txt (optional sex coding)
+## Notes and limitations
 
-Use:
-```bash
-cat12_BrAge_tables.py
-```
-These files must be sorted in the same order as rp1/rp2 filenames.
+- This is a workflow template, not a turnkey reproducible analysis package: paths, datasets, CAT12 batch options, and BrainAGE model choices are study-specific.
+- `organize_cat12_output.sh` should be inspected after configuration; its current source contains an obsolete malformed copy line that must be removed or corrected before execution.
+- The behavioral script does not standardize predictors even though one original input filename suggests standardized data. Scale predictors appropriately before interpreting LASSO coefficients.
+- Age-based stratification is not validation across sites, scanners, or populations. Avoid leakage in all preprocessing and feature-selection decisions.
 
-# 3️⃣ Feature Extraction (BA_data2mat)
+## References
 
-Using `BA_data2mat.m` script from the official CAT12/BrainAGE GitHub to 
-This step:
-
-    Reads rp1/rp2 maps
-    Applies smoothing and resampling (4mm / 8mm)
-    Produces .mat feature files (e.g., s8rp1_8mm_session1_CAT12.9.mat)
-
-These .mat files contain the matrix Y that BrainAGE uses for prediction.
-
-# 4️⃣ BrainAGE Prediction (GPR Model)
-
-Use the script `run_BA_gpr_ui.m` to estimate the brain age for each subject. 
-This script uses the BA_gpr.m from the BrainAGE toolbox.
-It loads the .mat feature files. Applies Gaussian Process Regression ensemble models. And outputs predicted brain age and BAG for each subject. 
-
-Brain Age Gap is calculated by:
-        
-                                BAG = Predicted Brain Age – Chronological Age
-
-
-BAG > 0 → accelerated brian aging
-
-BAG < 0 → decelerated brain aging
-
-The final output from this step is a table:
-
-                                Subject_ID | Age | Predicted_BrainAge | BAG
-
-# 5️⃣ Predicting BAG Using Behavioral Measures (Machine Learning)
-
-We used LASSO and stratified K-fold cross-validation to evaluate how well the behavioral data can predict BAG.
-
-### **5.1 Required inputs**
-
-                    BAG_table.xlsx
-
-                    Behavioral_scores.xlsx
-
-Each must contain Subject_ID for merging.
-
-### **5.2 Run ML pipeline**
-    python BAG_pred_kfoldCV.py
-
-### **5.3 What the script does**
-
-Uses 5-fold stratified CV (stratified by age)
-
-Predicts BAG from behavioral features
-
-Generates out-of-fold predictions (each subject predicted on unseen data)
-
-Computes:
-
-        R² MAE Pearson r
-
-📚 References
-
-CAT12 Toolbox:
-https://github.com/ChristianGaser/CAT12
-
-BrainAGE Framework:
-https://github.com/ChristianGaser/BrainAGE
-Gaser et al. (2013), Franke & Gaser (2019)
-
-SPM12:
-https://www.fil.ion.ucl.ac.uk/spm/software/spm12/
+- [CAT12](https://github.com/ChristianGaser/CAT12)
+- [BrainAGE](https://github.com/ChristianGaser/BrainAGE)
+- Gaser et al. (2013); Franke and Gaser (2019)
